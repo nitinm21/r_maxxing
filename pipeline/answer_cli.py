@@ -6,7 +6,16 @@ from rewrite import rewrite
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PINECONE_HOST = "https://rmaxxing-n9s6x6u.svc.aped-4627-b74a.pinecone.io"
-PERSONA = (ROOT / "lib/persona_prompt.txt").read_text()
+def _exemplars():
+    out = []
+    for vid, lo, hi in [("-IJ71tbhOLY", 60, 800), ("1V11itjbyVE", 150, 900)]:
+        r = json.loads((ROOT / f"data/transcripts/{vid}.json").read_text())
+        words = r["text"].split()
+        out.append(f"[From your video \"{r['title'].strip()}\"]\n" + " ".join(words[lo:hi]))
+    return "\n\n".join(out)
+
+PERSONA = ((ROOT / "lib/persona_prompt.txt").read_text()
+           + "\n\nHOW YOU TALK (verbatim from your videos):\n\n" + _exemplars())
 
 PROBLEMS = [
     "My girlfriend of three years broke up with me and I can't stop thinking about her.",
@@ -53,12 +62,12 @@ def answer(q):
     body = {
         "model": "gpt-5.6-terra",
         "reasoning_effort": "none",
-        "temperature": 0.8,
+        "temperature": 1.0,
         "max_completion_tokens": 700,
         "stream": True,
         "stream_options": {"include_usage": True},
         "messages": [
-            {"role": "system", "content": f"{PERSONA}\n\nCONTEXT:\n{context}"},
+            {"role": "system", "content": f"{PERSONA}\n\nIDEAS RELEVANT TO THIS VIEWER (from your videos):\n{context}"},
             {"role": "user", "content": q},
         ],
     }
