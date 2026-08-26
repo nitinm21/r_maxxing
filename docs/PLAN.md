@@ -15,8 +15,8 @@ next phase starts until you approve. Phase 1 is already running (approved).
 | Pipeline model | GPT-5.6 Luna, reasoning none | classification + query rewrite, ~$0.001/call |
 | Transcription + mic STT | `gpt-4o-mini-transcribe` | ~$0.003/min |
 | Embeddings | `text-embedding-3-small` | ~$0.02 for whole corpus |
-| Vector DB | Upstash Vector | free tier covers ~2,000 chunks |
-| Users | Anonymous; localStorage chats; per-IP rate limit | no auth in v1 |
+| Vector DB | Pinecone (serverless, index `rmaxxing`) | free tier; ~1,400 chunks |
+| Users | Anonymous; localStorage chats; per-IP limits via Vercel WAF rules | no auth in v1 |
 | Repo / deploy | public `nitinm21/r_maxxing` → Vercel | transcripts/audio never committed |
 | Persona ethics | visible "unofficial fan project" disclaimer | user decision |
 | Voice output | v2 (Chatterbox on serverless GPU + Blob cache) | deferred |
@@ -42,7 +42,7 @@ actual spend from OpenAI dashboard · your 72h-vs-232h (+~$29) decision.
 2. Prepend `"{video title} — "` to each chunk body before embedding (titles carry his
    framing: "Be retarded and stop overthinking").
 3. Embed with `text-embedding-3-small`, batches of 100 inputs per API call.
-4. Upsert to Upstash Vector: `{id, vector, metadata: {videoId, title, url, score, n, text}}`.
+4. Upsert to Pinecone: `{id, vector, metadata: {videoId, title, url, score, n, text}}`.
    No per-moment timestamps (transcription model doesn't emit them) — citations link to
    the video page only.
 
@@ -112,7 +112,7 @@ components/
   Toast.tsx             # errors + rate-limit notices
   EmptyState.tsx        # new-chat screen with example prompts
 lib/
-  openai.ts  rewrite.ts  retrieve.ts  prompt.ts  ratelimit.ts  storage.ts
+  openai.ts  rewrite.ts  retrieve.ts  prompt.ts  storage.ts
 styles/tokens.css
 ```
 
@@ -210,7 +210,7 @@ swap, no transition); answer-complete flourish (reading surface).
 
 ### Deploy
 Vercel **preview** (project created under your account, `vercel env` for
-`OPENAI_API_KEY`, `UPSTASH_VECTOR_REST_URL/TOKEN`, `UPSTASH_REDIS_REST_URL/TOKEN`).
+`OPENAI_API_KEY`, `PINECONE_API_KEY`).
 
 **Needs from you at P4 start:** `vercel login` + project-creation approval · app
 display name · Upstash (if not done at P2) · confirm 20 msgs/day/IP.
