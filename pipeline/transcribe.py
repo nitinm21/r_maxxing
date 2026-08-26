@@ -62,7 +62,9 @@ def process(video):
         return f"download-failed: {r.stderr.strip()[-200:]}"
     # segment into 20-minute chunks (API duration limits)
     seg_pat = AUDIO / f"{vid}_%03d.mp3"
-    sh("ffmpeg", "-y", "-i", str(mp3), "-f", "segment", "-segment_time", "1200",
+    # 8-min segments: gpt-4o-mini-transcribe silently truncates output around
+    # 2k tokens (~12 min of speech), so segments must stay well under that.
+    sh("ffmpeg", "-y", "-i", str(mp3), "-f", "segment", "-segment_time", "480",
        "-c", "copy", str(seg_pat))
     segments = sorted(AUDIO.glob(f"{vid}_*.mp3"))
     texts = [transcribe_file(s) for s in segments]
@@ -82,7 +84,10 @@ def main():
     for v in videos:
         if spent + v["duration"] > budget_s:
             continue
-        status = process(v)
+        try:
+            status = process(v)
+        except Exception as e:  # a single video must never kill the batch
+            status = f"exception: {type(e).__name__}: {e}"
         spent += v["duration"] if status in ("ok", "skip") else 0
         if status == "ok":
             done += 1
